@@ -1,0 +1,103 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+// Inisialisasi LCD I2C
+LiquidCrystal_I2C lcd(0x27, 16, 2); 
+
+// Definisi pin untuk 3 LED (menggunakan array agar kode lebih ringkas)
+const int pinLED[] = {13, 12, 11};
+const int jumlahLED = 3;
+
+// Lirik lagu
+const char* lyrics[] = {
+  "You're gonna say that you're sorry ",
+  "at the end of the night",
+  "Wake up in the morning",
+  "everything's alright",
+  "At the end of the story",
+  "you're holdin' me tight",
+  "I don't need to worry,",
+  "am I out of my mind?",
+  "And, oh, it's hard to see you",
+  "but I wish you were right here",
+};
+
+// Durasi tampil tiap baris dalam detik
+const float timings[] = {
+  2.3, 2.0, 2.0, 1.3, 2.0, 2.0, 2.0, 1.4, 1.9, 1.9
+};
+
+const int numLines = sizeof(lyrics) / sizeof(lyrics[0]);
+
+void setup() {
+  lcd.init();          
+  lcd.backlight();     
+  
+  // Mengatur semua pin LED sebagai OUTPUT menggunakan perulangan
+  for (int i = 0; i < jumlahLED; i++) {
+    pinMode(pinLED[i], OUTPUT);
+  }
+}
+
+void loop() {
+  for (int i = 0; i < numLines; i++) {
+    lcd.clear(); 
+    
+    String line = String(lyrics[i]);
+    int len = line.length();
+    
+    // Potong teks otomatis jika lebih dari 16 karakter
+    if (len > 16) {
+      int breakPoint = line.lastIndexOf(' ', 16);
+      if (breakPoint == -1) breakPoint = 16;
+      
+      String first = line.substring(0, breakPoint);
+      String second = line.substring(breakPoint);
+      second.trim(); 
+      
+      lcd.setCursor((16 - first.length()) / 2, 0);
+      lcd.print(first);
+      
+      lcd.setCursor((16 - second.length()) / 2, 1);
+      lcd.print(second);
+    } else {
+      lcd.setCursor((16 - len) / 2, 0);
+      lcd.print(line);
+    }
+    
+    // --- FITUR 3 LAMPU LED BERGANTIAN ---
+    int totalDurasiMs = timings[i] * 1000;
+    int sisaWaktu = totalDurasiMs;
+    int indexLED = 0; // Menentukan LED mana yang aktif duluan
+
+    while (sisaWaktu > 0) {
+      // Kecepatan perpindahan lampu (100ms)
+      int jedaLampu = 100; 
+      
+      if (sisaWaktu >= jedaLampu) {
+        // Matikan semua LED terlebih dahulu
+        for (int j = 0; j < jumlahLED; j++) {
+          digitalWrite(pinLED[j], LOW);
+        }
+        
+        // Nyalakan satu LED yang aktif sesuai giliran
+        digitalWrite(pinLED[indexLED], HIGH);
+        delay(jedaLampu);
+        
+        // Ganti giliran ke LED berikutnya (0 -> 1 -> 2 -> kembali ke 0)
+        indexLED = (indexLED + 1) % jumlahLED;
+        sisaWaktu -= jedaLampu;
+      } else {
+        delay(sisaWaktu);
+        sisaWaktu = 0;
+      }
+    }
+    
+    // Matikan semua LED sejenak sebelum ganti ke lirik berikutnya
+    for (int j = 0; j < jumlahLED; j++) {
+      digitalWrite(pinLED[j], LOW);
+    }
+  }
+  
+  while (true); 
+}
